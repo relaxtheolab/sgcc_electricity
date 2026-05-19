@@ -94,6 +94,14 @@ class DataFetcher:
             return "error"
         return "unknown"
 
+    # Stealth JS: 覆盖 navigator.webdriver 及相关属性
+    _STEALTH_JS = """
+    Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
+    Object.defineProperty(navigator, 'languages', {get: () => ['zh-HK','zh','en-US','en','zh-CN']});
+    Object.defineProperty(navigator, 'platform', {get: () => 'MacIntel'});
+    window.chrome = {runtime: {}, loadTimes: function(){}, csi: function(){}};
+    """
+
     def _get_webdriver(self):
         logging.info(f"正在初始化 WebDriver, 平台: {platform.system()}")
         if platform.system() == 'Windows':
@@ -116,26 +124,52 @@ class DataFetcher:
             )
             driver.implicitly_wait(self.DRIVER_IMPLICITY_WAIT_TIME)
         else:
+            # --- Docker / Linux 环境：全量反检测伪装 ---
+            browser_window_size = os.getenv("BROWSER_WINDOW_SIZE", "1158,848")
+            browser_language = os.getenv("BROWSER_LANGUAGE", "zh-HK,zh,en-US,en,zh-CN")
+            browser_ua = os.getenv(
+                "BROWSER_USER_AGENT",
+                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36",
+            )
+            browser_device_scale_factor = float(os.getenv("BROWSER_DEVICE_SCALE_FACTOR", "2"))
+            browser_language_primary = browser_language.split(",")[0]
+
             chrome_options = webdriver.ChromeOptions()
-            chrome_options.add_argument("--headless=new")
             chrome_options.add_argument("--no-sandbox")
-            chrome_options.add_argument("--disable-gpu")
             chrome_options.add_argument("--disable-dev-shm-usage")
             chrome_options.add_argument("--start-maximized")
+            chrome_options.add_argument(f"--window-size={browser_window_size}")
+            chrome_options.add_argument(f"--lang={browser_language_primary}")
 
-            # --- 规避反爬 ---
+            # 禁用自动化标记
             chrome_options.add_argument("--disable-blink-features=AutomationControlled")
             chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
             chrome_options.add_experimental_option("useAutomationExtension", False)
-            chrome_options.add_argument(
-                "user-agent=Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
-                "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36")
 
-            # 指定 chromium 和 chromedriver 的路径
+            # 伪装 User-Agent 为 macOS Chrome
+            chrome_options.add_argument(f"user-agent={browser_ua}")
+
+            # 高级伪装参数
+            chrome_options.add_argument("--disable-features=Translate")
+            chrome_options.add_argument(f"--force-device-scale-factor={browser_device_scale_factor}")
+            chrome_options.add_argument("--high-dpi-support=1")
+            chrome_options.add_argument("--password-store=basic")
+            chrome_options.add_argument("--use-mock-keychain")
+
+            chrome_options.add_experimental_option(
+                "prefs",
+                {
+                    "intl.accept_languages": browser_language,
+                    "credentials_enable_service": False,
+                    "profile.password_manager_enabled": False,
+                },
+            )
+
             if 'PYTHON_IN_DOCKER' in os.environ:
                 chrome_options.binary_location = "/usr/bin/chromium"
                 service = ChromeService(executable_path="/usr/bin/chromedriver")
-                logging.info("使用 Chromium 浏览器 (Docker 模式)")
+                logging.info("使用 Chromium 浏览器 (Docker + Xvfb 模式)")
             else:
                 service = ChromeService()
                 logging.info("使用 Chrome 浏览器 (Linux 桌面模式)")
@@ -145,6 +179,17 @@ class DataFetcher:
                 service=service,
             )
             driver.implicitly_wait(self.DRIVER_IMPLICITY_WAIT_TIME)
+
+            # 注入反 webdriver 检测脚本 (CDP)
+            try:
+                driver.execute_cdp_cmd(
+                    "Page.addScriptToEvaluateOnNewDocument",
+                    {"source": self._STEALTH_JS},
+                )
+                logging.info("已注入反 webdriver 检测脚本 (CDP)")
+            except Exception as e:
+                logging.warning(f"CDP 注入失败 (非致命): {e}")
+
         logging.info("WebDriver 初始化完成")
         return driver
 

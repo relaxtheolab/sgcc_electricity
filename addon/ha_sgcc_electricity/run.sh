@@ -61,4 +61,4 @@ echo "数据库类型: ${DB_TYPE}"
 echo "========================================="
 
 cd /app
-exec python3 main.py
+exec xvfb-run -a --server-args="-screen 0 1920x1080x24" python3 main.py

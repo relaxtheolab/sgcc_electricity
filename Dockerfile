@@ -10,12 +10,15 @@ ARG TARGETARCH
 ARG VERSION
 ENV VERSION=${VERSION}
 ENV PYTHON_IN_DOCKER='PYTHON_IN_DOCKER'
+ENV DISPLAY=:99
 
 COPY scripts/ /app/
 WORKDIR /app
 
 RUN apt-get --allow-releaseinfo-change update \
-    && apt-get install -y --no-install-recommends jq chromium chromium-driver fonts-noto-cjk tzdata \
+    && apt-get install -y --no-install-recommends \
+        jq chromium chromium-driver fonts-noto-cjk tzdata \
+        xauth xvfb \
     && ln -snf /usr/share/zoneinfo/$TZ /etc/localtime \
     && echo $TZ > /etc/timezone \
     && dpkg-reconfigure --frontend noninteractive tzdata \
@@ -38,4 +41,4 @@ RUN mkdir /data \
 
 ENV LANG=C.UTF-8
 
-CMD ["python3", "main.py"]
+CMD ["xvfb-run", "-a", "--server-args=-screen 0 1920x1080x24", "python3", "main.py"]
