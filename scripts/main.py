@@ -12,6 +12,11 @@ from datetime import datetime,timedelta
 from const import *
 from data_fetcher import DataFetcher
 
+# Windows 终端 UTF-8 编码支持
+if sys.platform == 'win32':
+    sys.stdout.reconfigure(encoding='utf-8')
+    sys.stderr.reconfigure(encoding='utf-8')
+
 def main():
     global RETRY_TIMES_LIMIT
     if 'PYTHON_IN_DOCKER' not in os.environ: 

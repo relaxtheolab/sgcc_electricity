@@ -435,12 +435,15 @@ class DataFetcher:
         return False
 
     def _qr_login(self, driver) -> bool:
-        logging.info("密码登录失败, 切换到二维码登录模式")
-        # 切换验证码
-        element = WebDriverWait(driver, self.DRIVER_IMPLICITY_WAIT_TIME).until(
-            EC.presence_of_element_located((By.CLASS_NAME, 'qr_code')))
-        driver.execute_script("arguments[0].click();", element)
-        logging.info("已切换到二维码登录模式")
+        logging.info("切换到二维码登录模式")
+        # 尝试切换到二维码标签（如果已经在二维码页面则跳过）
+        try:
+            qr_tab = driver.find_element(By.CLASS_NAME, 'qr_code')
+            if qr_tab.is_displayed():
+                driver.execute_script("arguments[0].click();", qr_tab)
+                logging.info("已切换到二维码登录标签")
+        except Exception:
+            logging.info("当前已在二维码登录页面或无需切换")
 
         time.sleep(self._step_wait)
         # 获取登录二维码
@@ -495,7 +498,19 @@ class DataFetcher:
         updator = SensorUpdator()
         
         try:
-            if os.getenv("DEBUG_MODE", "false").lower() == "true":
+            login_method = os.getenv("LOGIN_METHOD", "password").lower()
+            if login_method == "qrcode":
+                # 直接扫码登录模式
+                logging.info("LOGIN_METHOD=qrcode, 直接进入扫码登录模式")
+                driver.get(LOGIN_URL)
+                WebDriverWait(driver, self.DRIVER_IMPLICITY_WAIT_TIME * 3).until(
+                    EC.visibility_of_element_located((By.CLASS_NAME, "user")))
+                time.sleep(self._step_wait)
+                if self._qr_login(driver):
+                    logging.info("扫码登录成功!")
+                else:
+                    raise Exception("扫码登录失败")
+            elif os.getenv("DEBUG_MODE", "false").lower() == "true":
                 if self._login(driver,phone_code=True):
                     logging.info("login successed !")
                 else:
@@ -559,18 +574,84 @@ class DataFetcher:
         driver.quit()
 
 
-    def _get_current_userid(self, driver):
-        current_userid = driver.find_element(By.XPATH, '//*[@id="app"]/div/div/article/div/div/div[2]/div/div/div[1]/div[2]/div/div/div/div[2]/div/div[1]/div/ul/div/li[1]/span[2]').text
-        return current_userid
-    
+    def _get_current_userid(self, driver) -> str:
+        """读取当前页面的用户户号（兼容多种页面布局）"""
+        # 方式一：从"用电户号"标签中读取
+        try:
+            label = driver.find_element(By.XPATH, "//*[contains(normalize-space(.), '用电户号')]").text or ""
+            matches = re.findall(r"\b\d{13}\b", label)
+            if matches:
+                return matches[-1]
+        except Exception:
+            pass
+        # 方式二：从页面源码中正则匹配
+        try:
+            page_source = driver.page_source or ""
+            match = re.search(r"用电户号[:：\s]*([0-9]{13})", page_source)
+            if match:
+                return match.group(1)
+        except Exception:
+            pass
+        # 方式三：从下拉框中读取当前选中项
+        try:
+            dropdown = driver.find_element(By.CLASS_NAME, "el-dropdown")
+            text = dropdown.text or ""
+            matches = re.findall(r"\b\d{13}\b", text)
+            if matches:
+                return matches[-1]
+        except Exception:
+            pass
+        logging.warning("无法读取当前户号")
+        return ""
+
     def _choose_current_userid(self, driver, userid_index):
+        """切换到指定索引的用户户号"""
+        # 关闭确认弹窗（如果有）
         elements = driver.find_elements(By.CLASS_NAME, "button_confirm")
         if elements:
-            self._click_button(driver, By.XPATH, f'''//*[@id="app"]/div/div[2]/div/div/div/div[2]/div[2]/div/button''')
+            try:
+                self._click_button(driver, By.XPATH, "//*[@id='app']/div/div[2]/div/div/div/div[2]/div[2]/div/button")
+            except Exception:
+                pass
         time.sleep(self._step_wait)
-        self._click_button(driver, By.CLASS_NAME, "el-input__suffix")
+
+        # 打开用户选择器（兼容多种触发方式）
+        try:
+            trigger = WebDriverWait(driver, self.DRIVER_IMPLICITY_WAIT_TIME).until(
+                EC.element_to_be_clickable((
+                    By.XPATH,
+                    "//span[contains(normalize-space(.), '切换用户')]"
+                    " | //div[contains(@class,'houseNum')]//div[contains(@class,'el-select')]//span[contains(@class,'el-input__suffix')]"
+                    " | //div[contains(@class,'houseNum')]//span[contains(normalize-space(.), '切换用户')]"
+                ))
+            )
+            driver.execute_script("arguments[0].click();", trigger)
+        except Exception:
+            # fallback: 点击 el-input__suffix（下拉箭头）
+            self._click_button(driver, By.CLASS_NAME, "el-input__suffix")
         time.sleep(self._step_wait)
-        self._click_button(driver, By.XPATH, f"/html/body/div[2]/div[1]/div[1]/ul/li[{userid_index+1}]/span")
+
+        # 获取下拉选项并点击目标
+        options = self._get_visible_user_options(driver)
+        if userid_index >= len(options):
+            logging.error(f"用户索引 {userid_index} 超出范围, 共 {len(options)} 个选项")
+            return
+        driver.execute_script("arguments[0].click();", options[userid_index])
+        logging.info(f"已切换到用户索引 {userid_index}")
+
+    def _get_visible_user_options(self, driver):
+        """获取可见的用户下拉选项（兼容 el-dropdown 和 el-select）"""
+        return [
+            option
+            for option in driver.find_elements(
+                By.XPATH,
+                "//ul[contains(@class,'el-dropdown-menu')]//li"
+                " | //div[contains(@class,'el-select-dropdown')]//li",
+            )
+            if option.is_displayed()
+            and "is-disabled" not in (option.get_attribute("class") or "")
+            and "disabled" not in (option.get_attribute("class") or "")
+        ]
         
 
     def _get_all_data(self, driver, user_id, userid_index):
