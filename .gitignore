@@ -14,6 +14,7 @@ docs/*
 !docs/LLM_CAPTCHA.md
 !docs/MQTT.md
 !docs/MQTT_TEST.md
+!docs/MQTT_ENTITY_NAME_FIX.md
 !docs/CHANGELOG.md
 !docs/FAQ.md
 !docs/RELEASE_*.md
