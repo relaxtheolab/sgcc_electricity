@@ -144,10 +144,12 @@ def logger_init(level: str):
     sh.setFormatter(fmt)
     logger.addHandler(sh)
     try:
+        from logging.handlers import RotatingFileHandler
         log_dir = get_data_dir()
         os.makedirs(log_dir, exist_ok=True)
         log_file = os.path.join(log_dir, "app.log")
-        fh = logging.FileHandler(log_file, encoding="utf-8")
+        # 使用 RotatingFileHandler，最大 10MB，保留 3 个备份文件
+        fh = RotatingFileHandler(log_file, maxBytes=10*1024*1024, backupCount=3, encoding="utf-8")
         fh.setFormatter(fmt)
         logger.addHandler(fh)
     except Exception as exc:

@@ -85,4 +85,4 @@ echo "数据库类型: ${DB_TYPE}"
 echo "========================================="
 
 cd /app
-exec python3 main.py
+exec python3 scripts/main.py
