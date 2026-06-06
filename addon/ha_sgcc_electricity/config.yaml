@@ -1,5 +1,5 @@
 name: "国家电网电费数据获取"
-description: "将国家电网 95598 电费、用电量、分时电量数据通过 REST API 同步到 Home Assistant"
+description: "将国家电网 95598 电费、用电量、分时电量数据同步到 Home Assistant（支持 REST API 和 MQTT Discovery）"
 version: "2.0.0"
 slug: "ha_sgcc_electricity"
 url: "https://github.com/Poiig/ha_sgcc_electricity"
@@ -17,6 +17,14 @@ options:
   db_type: "sqlite"
   hass_url: "http://homeassistant:8123/"
   hass_token: ""
+  mqtt_host: ""
+  mqtt_port: 1883
+  mqtt_username: ""
+  mqtt_password: ""
+  mqtt_client_id: "ha_sgcc_electricity"
+  mqtt_topic_prefix: "homeassistant"
+  mqtt_device_id: "ha_sgcc_electricity"
+  mqtt_device_name: "国家电网电费数据"
   job_start_time: "07:00"
   run_on_startup: false
   captcha_solver: "local"
@@ -37,7 +45,15 @@ schema:
   ignore_user_id: str?
   db_type: list(none|sqlite|mysql)
   hass_url: str
-  hass_token: password
+  hass_token: password?
+  mqtt_host: str?
+  mqtt_port: int(1,65535)?
+  mqtt_username: str?
+  mqtt_password: str?
+  mqtt_client_id: str?
+  mqtt_topic_prefix: str?
+  mqtt_device_id: str?
+  mqtt_device_name: str?
   job_start_time: str
   run_on_startup: bool
   captcha_solver: list(local|llm)

@@ -18,6 +18,7 @@ import json
 import random
 from error_watcher import ErrorWatcher
 from sensor_updator import SensorUpdator
+from mqtt_sensor_updator import MQTTSensorUpdator
 from datetime import datetime,timedelta
 from const import *
 from data_fetcher import DataFetcher
@@ -41,6 +42,7 @@ def main():
         PHONE_NUMBER = os.getenv("PHONE_NUMBER")
         PASSWORD = os.getenv("PASSWORD")
         HASS_URL = os.getenv("HASS_URL")
+        MQTT_HOST = os.getenv("MQTT_HOST", "").strip()
         JOB_START_TIME = os.getenv("JOB_START_TIME", "09:30")
         RUN_ON_STARTUP = os.getenv("RUN_ON_STARTUP", "false").strip().strip('"').strip("'").lower() in ("true", "1", "yes")
         LOG_LEVEL = os.getenv("LOG_LEVEL","INFO")
@@ -68,7 +70,14 @@ def main():
     ErrorWatcher.init(root_dir=error_dir)
     logging.info("ErrorWatcher 初始化完成")
     fetcher = DataFetcher(PHONE_NUMBER, PASSWORD)
-    updator = SensorUpdator()
+
+    # 初始化数据推送方式
+    if MQTT_HOST:
+        updator = MQTTSensorUpdator()
+        logging.info(f"使用 MQTT Discovery 方式推送数据到: {MQTT_HOST}")
+    else:
+        updator = SensorUpdator()
+        logging.info(f"使用 REST API 方式推送数据到: {HASS_URL}")
 
     from env_manager import register_env_reload
 
@@ -77,7 +86,7 @@ def main():
     # 生成随机延迟时间（-10分钟到+10分钟）
     random_delay_minutes = random.randint(-10, 10)
     parsed_time = datetime.strptime(JOB_START_TIME, "%H:%M") + timedelta(minutes=random_delay_minutes)
-    logging.info(f"登录账号: {PHONE_NUMBER}，Home Assistant 地址: {HASS_URL}，每天 {parsed_time.strftime('%H:%M')} 定时同步")
+    logging.info(f"登录账号: {PHONE_NUMBER}，每天 {parsed_time.strftime('%H:%M')} 定时同步")
 
     # 添加随机延迟
     next_run_time = parsed_time + timedelta(hours=12)
