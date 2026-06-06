@@ -83,6 +83,12 @@ jobs:
             echo "📦 基础镜像不存在，首次构建"
           fi
 
+      - name: Prepare repository name
+        id: repo
+        run: |
+          REPO_LOWER="$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')"
+          echo "repo_lower=${REPO_LOWER}" >> "$GITHUB_OUTPUT"
+
       - name: Set up QEMU
         if: steps.check.outputs.should_build == 'true'
         uses: docker/setup-qemu-action@v3
@@ -100,8 +106,8 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
-            ghcr.io/${{ github.repository }}:base
-            ghcr.io/${{ github.repository }}:${{ steps.check.outputs.base_tag }}
+            ghcr.io/${{ steps.repo.outputs.repo_lower }}:base
+            ghcr.io/${{ steps.repo.outputs.repo_lower }}:${{ steps.check.outputs.base_tag }}
           build-args: |
             BUILD_DATE=${{ steps.check.outputs.build_date }}
           cache-from: type=gha,scope=base
@@ -112,11 +118,10 @@ jobs:
           echo "### 基础镜像构建结果" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
           if [ "${{ steps.check.outputs.should_build }}" = "true" ]; then
-            REPO_LOWER="$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')"
             echo "✅ **已构建并推送基础镜像**" >> "$GITHUB_STEP_SUMMARY"
             echo "" >> "$GITHUB_STEP_SUMMARY"
-            echo "- \`ghcr.io/${REPO_LOWER}:base\`" >> "$GITHUB_STEP_SUMMARY"
-            echo "- \`ghcr.io/${REPO_LOWER}:${{ steps.check.outputs.base_tag }}\`" >> "$GITHUB_STEP_SUMMARY"
+            echo "- \`ghcr.io/${{ steps.repo.outputs.repo_lower }}:base\`" >> "$GITHUB_STEP_SUMMARY"
+            echo "- \`ghcr.io/${{ steps.repo.outputs.repo_lower }}:${{ steps.check.outputs.base_tag }}\`" >> "$GITHUB_STEP_SUMMARY"
           else
             echo "⏭️  基础镜像在有效期内，跳过构建" >> "$GITHUB_STEP_SUMMARY"
           fi
