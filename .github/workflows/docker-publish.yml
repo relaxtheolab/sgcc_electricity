@@ -33,8 +33,11 @@ jobs:
             TAG="$(date +%Y%m%d-%H%M)"
           fi
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          BUILD_DATE="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          echo "build_date=${BUILD_DATE}" >> "$GITHUB_OUTPUT"
           echo "GHCR 镜像: ghcr.io/${REPO_LOWER}"
           echo "本次版本: ${TAG}"
+          echo "构建时间: ${BUILD_DATE}"
 
       - name: Check Docker Hub secrets
         id: dockerhub
@@ -83,6 +86,7 @@ jobs:
             ghcr.io/${{ steps.vars.outputs.repo_lower }}:${{ steps.vars.outputs.tag }}
           build-args: |
             VERSION=${{ steps.vars.outputs.tag }}
+            BUILD_DATE=${{ steps.vars.outputs.build_date }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -99,6 +103,7 @@ jobs:
             ${{ steps.dockerhub.outputs.image }}:${{ steps.vars.outputs.tag }}
           build-args: |
             VERSION=${{ steps.vars.outputs.tag }}
+            BUILD_DATE=${{ steps.vars.outputs.build_date }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 

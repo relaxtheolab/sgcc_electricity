@@ -56,8 +56,52 @@ class MQTTDiscoveryClient:
                 time.sleep(0.1)
             if not self.connected:
                 logging.warning("MQTT 连接尚未建立，后续操作将在连接就绪后执行")
+                return
+
+            # 清除旧版本遗留的双重 sensor/sensor. 路径的 retain 消息
+            self._cleanup_legacy_topics()
         except Exception as e:
             logging.error("MQTT 客户端初始化失败: %s", e)
+
+    def _cleanup_legacy_topics(self):
+        """清除旧版本（entity_id 含 sensor. 前缀）遗留的 discovery retain 消息，避免 HA 解析出拼音实体名。"""
+        if not self.client or not self.connected:
+            return
+        # 旧版本的 config topic 格式为 homeassistant/sensor/sensor.xxx_xxxx/config
+        # 发送空 payload 清除 retain
+        from const import (
+            BALANCE_SENSOR_NAME, DAILY_USAGE_SENSOR_NAME, YEARLY_USAGE_SENSOR_NAME,
+            YEARLY_CHARGE_SENSOR_NAME, MONTH_USAGE_SENSOR_NAME, MONTH_CHARGE_SENSOR_NAME,
+            MONTH_VALLEY_SENSOR_NAME, MONTH_FLAT_SENSOR_NAME, MONTH_PEAK_SENSOR_NAME,
+            MONTH_TIP_SENSOR_NAME, PREPAY_BALANCE_SENSOR_NAME,
+            STEP_USED_STEP1_SENSOR_NAME, STEP_REMAIN_STEP1_SENSOR_NAME,
+            STEP_USED_STEP2_SENSOR_NAME, STEP_REMAIN_STEP2_SENSOR_NAME,
+            STEP_USED_STEP3_SENSOR_NAME, STEP_TOTAL_USAGE_SENSOR_NAME,
+            STEP_STAGE_SENSOR_NAME,
+        )
+        sensor_bases = [
+            BALANCE_SENSOR_NAME, DAILY_USAGE_SENSOR_NAME, YEARLY_USAGE_SENSOR_NAME,
+            YEARLY_CHARGE_SENSOR_NAME, MONTH_USAGE_SENSOR_NAME, MONTH_CHARGE_SENSOR_NAME,
+            MONTH_VALLEY_SENSOR_NAME, MONTH_FLAT_SENSOR_NAME, MONTH_PEAK_SENSOR_NAME,
+            MONTH_TIP_SENSOR_NAME, PREPAY_BALANCE_SENSOR_NAME,
+            STEP_USED_STEP1_SENSOR_NAME, STEP_REMAIN_STEP1_SENSOR_NAME,
+            STEP_USED_STEP2_SENSOR_NAME, STEP_REMAIN_STEP2_SENSOR_NAME,
+            STEP_USED_STEP3_SENSOR_NAME, STEP_TOTAL_USAGE_SENSOR_NAME,
+            STEP_STAGE_SENSOR_NAME,
+        ]
+        cleaned = 0
+        for base in sensor_bases:
+            object_id = base.replace("sensor.", "")
+            # 旧版本错误地把 entity_id（含 sensor.）直接拼入 topic
+            legacy_topic = f"{self.mqtt_topic_prefix}/sensor/sensor.{object_id}/config"
+            self.client.publish(legacy_topic, "", retain=True)
+            legacy_state = f"{self.mqtt_topic_prefix}/sensor/sensor.{object_id}/state"
+            self.client.publish(legacy_state, "", retain=True)
+            legacy_attrs = f"{self.mqtt_topic_prefix}/sensor/sensor.{object_id}/attributes"
+            self.client.publish(legacy_attrs, "", retain=True)
+            cleaned += 1
+        if cleaned:
+            logging.info("已清除 %d 组旧版 MQTT Discovery retain 消息", cleaned)
 
     def _on_connect(self, client, userdata, flags, reason_code, properties):
         """MQTT 连接成功回调。"""
@@ -83,7 +127,7 @@ class MQTTDiscoveryClient:
             "name": display_name,
             "model": "国家电网电费数据获取",
             "manufacturer": "SGCC",
-            "sw_version": os.getenv("VERSION", "2.0.0"),
+            "sw_version": os.getenv("VERSION", "latest"),
         }
 
     def _get_sensor_config(

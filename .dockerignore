@@ -1,0 +1,55 @@
+# Git
+.git
+.gitignore
+
+# IDE
+.idea
+.vscode
+.devcontainer
+
+# Python cache
+__pycache__
+*.py[cod]
+*$py.class
+*.egg-info
+*.egg
+*.so
+.venv
+venv
+
+# Docker
+Dockerfile
+docker-compose*.yml
+
+# Documentation
+docs/
+*.md
+!scripts/README.md
+
+# Addon
+addon/
+
+# Data and logs
+data/
+*.db
+*.log
+errors/
+pages/
+screenshots/
+sgcc_cache.json
+
+# Config
+.env
+config.yaml
+
+# Tests
+tests/
+
+# Misc
+assets/
+ha_addons_doc/
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.webp

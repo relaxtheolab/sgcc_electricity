@@ -46,7 +46,7 @@ def main():
         JOB_START_TIME = os.getenv("JOB_START_TIME", "09:30")
         RUN_ON_STARTUP = os.getenv("RUN_ON_STARTUP", "false").strip().strip('"').strip("'").lower() in ("true", "1", "yes")
         LOG_LEVEL = os.getenv("LOG_LEVEL","INFO")
-        VERSION = os.getenv("VERSION")
+        VERSION = os.getenv("VERSION", "unknown")
         RETRY_TIMES_LIMIT = int(os.getenv("RETRY_TIMES_LIMIT", 5))
         
         logger_init(LOG_LEVEL)
@@ -61,7 +61,7 @@ def main():
         logging.error(f"读取环境变量失败，程序退出: {e}")
         sys.exit()
 
-    logging.info(f"当前版本: {VERSION}，仓库地址: {REPO_URL}")
+    logging.info(f"当前版本: {VERSION}，构建时间: {os.getenv('BUILD_DATE', 'unknown')}，仓库地址: {REPO_URL}")
     current_datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     logging.info(f"当前时间: {current_datetime}")
 
