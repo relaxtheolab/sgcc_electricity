@@ -3,6 +3,7 @@ import json
 import logging
 import os
 import time
+import uuid
 from typing import Optional
 
 import paho.mqtt.client as mqtt
@@ -17,6 +18,8 @@ class MQTTDiscoveryClient:
         self.mqtt_username = os.getenv("MQTT_USERNAME", "").strip()
         self.mqtt_password = os.getenv("MQTT_PASSWORD", "").strip()
         self.mqtt_client_id = os.getenv("MQTT_CLIENT_ID", "ha_sgcc_electricity").strip()
+        # 每个实例追加随机后缀，避免多进程/多实例使用同一 client_id 导致互踢
+        self.mqtt_client_id = f"{self.mqtt_client_id}_{uuid.uuid4().hex[:8]}"
         self.mqtt_topic_prefix = os.getenv("MQTT_TOPIC_PREFIX", "homeassistant").strip()
         self.device_id = os.getenv("MQTT_DEVICE_ID", "ha_sgcc_electricity").strip()
         self.device_name = os.getenv("MQTT_DEVICE_NAME", "国家电网电费数据").strip()
