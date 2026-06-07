@@ -49,7 +49,7 @@
     .chart-wrap { position: relative; height: 260px; }
     .chart-wrap.tall { height: 300px; }
     .grid-2 .span-full { grid-column: 1 / -1; }
-    .tabs { display: flex; gap: 0.5rem; margin-bottom: 0.5rem; }
+    .tabs { display: flex; gap: 0.5rem; }
     .tab-btn { background: transparent; border: 1px solid var(--border); }
     .tab-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
     .panel { display: none; }
@@ -196,9 +196,10 @@
       <div class="card">
         <h2>数据库运行记录 · <span id="logHint" style="font-weight:400">balance_log</span></h2>
         <div id="syncLogWrap"></div>
-        <h2 style="margin-top:1rem">应用日志（app.log）
-          <button id="clearLogBtn" style="float:right;font-size:0.85rem;padding:0.3rem 0.7rem">清空日志</button>
-          <button id="mqttRepublishBtn" style="float:right;font-size:0.85rem;padding:0.3rem 0.7rem;margin-right:0.5rem">立即推送 MQTT</button>
+        <h2 style="margin-top:1rem;display:flex;align-items:center;gap:0.5rem">应用日志（app.log）
+          <span style="flex:1"></span>
+          <button id="clearLogBtn" style="font-size:0.85rem;padding:0.3rem 0.7rem">清空日志</button>
+          <button id="mqttRepublishBtn" style="font-size:0.85rem;padding:0.3rem 0.7rem">立即推送 MQTT</button>
         </h2>
         <div class="log-box" id="logBox"></div>
       </div>
@@ -496,7 +497,7 @@
     }
 
     async function loadLogs() {
-      const data = await api("/api/logs?per_user=5&app_lines=150");
+      const data = await api("/api/logs?per_user=5");
       renderBalanceLogs(data.balance_groups || []);
       $("logBox").textContent = (data.app_lines || []).join("\n") || "（暂无 app.log）";
       $("logBox").scrollTop = $("logBox").scrollHeight;

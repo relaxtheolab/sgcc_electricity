@@ -183,11 +183,11 @@ def _register_routes(router: APIRouter) -> None:
         }
 
     @router.get("/api/logs", dependencies=[Depends(require_auth)])
-    def api_logs(per_user: int = Query(5, ge=1, le=20), app_lines: int = Query(100, ge=0, le=500)):
+    def api_logs(per_user: int = Query(5, ge=1, le=20)):
         balance_groups = list_balance_logs(per_user) if is_db_enabled() else []
         return {
             "balance_groups": balance_groups,
-            "app_lines": tail_log(app_lines) if app_lines > 0 else [],
+            "app_lines": tail_log(),
         }
 
     @router.get("/api/users", dependencies=[Depends(require_auth)])

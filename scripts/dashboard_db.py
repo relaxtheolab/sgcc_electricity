@@ -379,14 +379,13 @@ def get_monthly_chart(user_id: str, months: int = 12) -> List[dict]:
 
 
 def tail_log(lines: int = 200) -> List[str]:
-    """保留 app.log 读取；运行日志 Tab 主表为 balance_log。"""
-    lines = max(50, min(lines, 1000))
+    """读取 app.log 全部内容（由 TimedRotatingFileHandler 按天轮转管理文件大小）。"""
     path = os.path.join(get_data_dir(), "app.log")
     if not os.path.isfile(path):
         return []
     try:
         with open(path, encoding="utf-8", errors="replace") as f:
             content = f.readlines()
-        return [ln.rstrip("\n") for ln in content[-lines:]]
+        return [ln.rstrip("\n") for ln in content]
     except Exception:
         return []

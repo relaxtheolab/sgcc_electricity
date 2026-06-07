@@ -28,9 +28,16 @@ def read_fetch_state() -> dict:
     try:
         with open(path, encoding="utf-8") as f:
             data = json.load(f)
+        # 如果状态是 running，检查是否应该自动重置
         if data.get("status") == "running" and data.get("started_at"):
             started = float(data["started_at"])
-            if time.time() - started > _STALE_SECONDS:
+            # lock 文件不存在说明进程已重启，立即重置
+            lock_path = _lock_path()
+            if not os.path.isfile(lock_path):
+                data["status"] = "idle"
+                data["message"] = "上次任务因容器重启已自动重置"
+                write_fetch_state(data)
+            elif time.time() - started > _STALE_SECONDS:
                 data["status"] = "idle"
                 data["message"] = "上次任务超时，已自动重置"
                 write_fetch_state(data)
