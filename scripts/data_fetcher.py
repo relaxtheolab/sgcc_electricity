@@ -656,7 +656,13 @@ class DataFetcher:
 
         time.sleep(self._step_wait)
         logging.info("WebDriver 已就绪")
-        updator = SensorUpdator()
+        # 根据配置选择 MQTT Discovery 或 REST API 推送方式
+        mqtt_host = os.getenv("MQTT_HOST", "").strip()
+        if mqtt_host:
+            from mqtt_sensor_updator import MQTTSensorUpdator
+            updator = MQTTSensorUpdator()
+        else:
+            updator = SensorUpdator()
         
         try:
             login_method = os.getenv("LOGIN_METHOD", "password").lower()
