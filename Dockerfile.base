@@ -3,7 +3,7 @@
 FROM python:3.12.11-slim-bookworm
 
 LABEL maintainer="poiig"
-LABEL description="Base image for ha_sgcc_electricity with system and Python dependencies"
+LABEL description="Base image for sgcc_electricity with system and Python dependencies"
 
 ARG BUILD_DATE
 ARG REQUIREMENTS_HASH

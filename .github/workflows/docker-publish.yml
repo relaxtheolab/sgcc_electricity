@@ -104,8 +104,8 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
-            docker.io/${{ secrets.DOCKERHUB_USERNAME }}/ha_sgcc_electricity:latest
-            docker.io/${{ secrets.DOCKERHUB_USERNAME }}/ha_sgcc_electricity:${{ steps.vars.outputs.tag }}
+            docker.io/${{ secrets.DOCKERHUB_USERNAME }}/sgcc_electricity:latest
+            docker.io/${{ secrets.DOCKERHUB_USERNAME }}/sgcc_electricity:${{ steps.vars.outputs.tag }}
           build-args: |
             VERSION=${{ steps.vars.outputs.tag }}
             BUILD_DATE=${{ steps.vars.outputs.build_date }}
@@ -117,7 +117,7 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-          repository: ${{ secrets.DOCKERHUB_USERNAME }}/ha_sgcc_electricity
+          repository: ${{ secrets.DOCKERHUB_USERNAME }}/sgcc_electricity
           short-description: 国家电网电费数据获取 - 支持 Home Assistant / 点选验证码自动识别
           readme-filepath: ./README.md
 
@@ -137,7 +137,7 @@ jobs:
           echo "| 注册表 | latest | 版本 |" >> "$GITHUB_STEP_SUMMARY"
           echo "|--------|--------|------|" >> "$GITHUB_STEP_SUMMARY"
           echo "| GHCR | \`ghcr.io/${{ steps.vars.outputs.repo_lower }}:latest\` | \`ghcr.io/${{ steps.vars.outputs.repo_lower }}:${{ steps.vars.outputs.tag }}\` |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| Docker Hub | \`docker.io/${DH_USER}/ha_sgcc_electricity:latest\` | \`docker.io/${DH_USER}/ha_sgcc_electricity:${{ steps.vars.outputs.tag }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Docker Hub | \`docker.io/${DH_USER}/sgcc_electricity:latest\` | \`docker.io/${DH_USER}/sgcc_electricity:${{ steps.vars.outputs.tag }}\` |" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "基础镜像: \`docker.io/${DH_USER}/ha_sgcc_electricity:base\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "基础镜像: \`docker.io/${DH_USER}/sgcc_electricity:base\`" >> "$GITHUB_STEP_SUMMARY"
           echo "GHCR 已配置保留最近 10 个版本，旧版本自动清理" >> "$GITHUB_STEP_SUMMARY"

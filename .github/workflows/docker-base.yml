@@ -40,7 +40,7 @@ jobs:
         id: check
         run: |
           DH_USER="${{ secrets.DOCKERHUB_USERNAME }}"
-          BASE_IMAGE="docker.io/${DH_USER}/ha_sgcc_electricity:base"
+          BASE_IMAGE="docker.io/${DH_USER}/sgcc_electricity:base"
           DATE_TAG="base-$(date +%Y%m%d)"
           BUILD_DATE="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
 
@@ -120,7 +120,7 @@ jobs:
           push: true
           tags: |
             ${{ steps.check.outputs.base_image }}
-            docker.io/${{ secrets.DOCKERHUB_USERNAME }}/ha_sgcc_electricity:${{ steps.check.outputs.base_tag }}
+            docker.io/${{ secrets.DOCKERHUB_USERNAME }}/sgcc_electricity:${{ steps.check.outputs.base_tag }}
           build-args: |
             BUILD_DATE=${{ steps.check.outputs.build_date }}
             REQUIREMENTS_HASH=${{ steps.check.outputs.requirements_hash }}
@@ -135,8 +135,8 @@ jobs:
           if [ "${{ steps.check.outputs.should_build }}" = "true" ]; then
             echo "**已构建并推送基础镜像到 Docker Hub**" >> "$GITHUB_STEP_SUMMARY"
             echo "" >> "$GITHUB_STEP_SUMMARY"
-            echo "- \`docker.io/${DH_USER}/ha_sgcc_electricity:base\`" >> "$GITHUB_STEP_SUMMARY"
-            echo "- \`docker.io/${DH_USER}/ha_sgcc_electricity:${{ steps.check.outputs.base_tag }}\`" >> "$GITHUB_STEP_SUMMARY"
+            echo "- \`docker.io/${DH_USER}/sgcc_electricity:base\`" >> "$GITHUB_STEP_SUMMARY"
+            echo "- \`docker.io/${DH_USER}/sgcc_electricity:${{ steps.check.outputs.base_tag }}\`" >> "$GITHUB_STEP_SUMMARY"
             echo "" >> "$GITHUB_STEP_SUMMARY"
             echo "**镜像信息：**" >> "$GITHUB_STEP_SUMMARY"
             echo "- 构建日期: \`${{ steps.check.outputs.build_date }}\`" >> "$GITHUB_STEP_SUMMARY"

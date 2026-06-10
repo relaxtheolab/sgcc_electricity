@@ -72,7 +72,8 @@ def main():
     fetcher = DataFetcher(PHONE_NUMBER, PASSWORD)
 
     # 初始化数据推送方式
-    if MQTT_HOST:
+    enable_ha_push = os.getenv("ENABLE_HA_PUSH", "true").strip().strip('"').strip("'").lower() not in ("false", "0", "no")
+    if enable_ha_push and MQTT_HOST:
         updator = MQTTSensorUpdator()
         logging.info(f"使用 MQTT Discovery 方式推送数据到: {MQTT_HOST}")
         # 注册到 web_dashboard，避免"立即推送"创建重复 MQTT 连接
@@ -81,9 +82,12 @@ def main():
             register_mqtt_updator(updator)
         except Exception:
             pass
-    else:
+    elif enable_ha_push and HASS_URL:
         updator = SensorUpdator()
         logging.info(f"使用 REST API 方式推送数据到: {HASS_URL}")
+    else:
+        updator = None
+        logging.info("Home Assistant 推送已禁用 (ENABLE_HA_PUSH=false)")
 
     from env_manager import register_env_reload
 
@@ -102,7 +106,8 @@ def main():
     schedule.every().day.at(next_run_time.strftime("%H:%M")).do(run_task, fetcher)
     
     # 每5分钟重发一次数据，防止HA重启后数据丢失
-    schedule.every(5).minutes.do(updator.republish)
+    if updator:
+        schedule.every(5).minutes.do(updator.republish)
     
     # 启动时抓取策略：
     # RUN_ON_STARTUP=true  → 立即登录抓取（Docker 调试/首次部署推荐）
@@ -110,11 +115,13 @@ def main():
     if RUN_ON_STARTUP:
         logging.info("RUN_ON_STARTUP 已启用，启动后立即执行登录与数据抓取...")
         run_task(fetcher)
-    elif not updator.republish():
+    elif updator and not updator.republish():
         logging.info("未找到有效缓存，立即从国家电网抓取数据...")
         run_task(fetcher)
-    else:
+    elif updator:
         logging.info("已从缓存恢复数据，跳过启动时抓取，等待定时任务执行。")
+    else:
+        logging.info("HA 推送已禁用且非 RUN_ON_STARTUP 模式，等待定时任务执行。")
     
     while True:
         schedule.run_pending()

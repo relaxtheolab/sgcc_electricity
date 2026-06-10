@@ -1,8 +1,8 @@
-# 国家电网电费数据获取
+# 国家电网数据获取工具
 
 [![Docker Build](https://github.com/Poiig/ha_sgcc_electricity/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/Poiig/ha_sgcc_electricity/actions/workflows/docker-publish.yml)
 
-将国家电网（95598）的电费、用电量、分时电量、阶梯用电数据接入 Home Assistant，支持验证码自动识别。
+自动登录国家电网（95598），抓取电费余额、日/月/年度用电量、分时电量、阶梯用电等数据，存入数据库并支持通过 Web 控制台查看。可选推送到 Home Assistant。
 
 ## 致谢
 
@@ -16,19 +16,31 @@
 ## 功能亮点
 
 - 自动登录国家电网（支持点选/滑块验证码自动识别、二维码扫码登录）
-- **两种数据推送方式**：REST API 和 MQTT Discovery（自动创建实体，无需手动配置）
+- **Web 控制台**：浏览器查看多户用电概览、阶梯用电、日/月图表、运行日志，手动触发同步
+- **Home Assistant 推送**：支持 REST API 和 MQTT Discovery 两种方式（可关闭）
 - 支持每日/月度/年度分时电量（谷/平/峰/尖）采集
 - 支持住宅用户阶梯用电数据（一/二/三阶已用、剩余、当前阶段）
-- **Web 控制台**：浏览器查看运行日志、户号图表、手动触发同步
 - 数据库支持 SQLite / MySQL / PostgreSQL
 - 电费余额不足通知（PushPlus / URL / 企业微信）
 - 适用于国家电网覆盖省份（`linux/amd64`、`linux/arm64`）
 
 ---
 
-## 数据推送方式
+## Web 控制台
 
-本项目支持两种方式将数据推送到 Home Assistant：
+启用 `WEB_DASHBOARD=true` 后，访问 `http://<主机>:8080/` 查看多户用电概览、阶梯用电、日/月图表与同步记录。
+
+![Web 控制台登录页](docs/attachment/login.png)
+
+![Web 控制台监控页](docs/attachment/controller.png)
+
+---
+
+## Home Assistant 推送
+
+本项目支持将抓取到的数据推送到 Home Assistant，默认启用（`ENABLE_HA_PUSH=true`），可通过 `ENABLE_HA_PUSH=false` 关闭。关闭后程序仅抓取数据并存入数据库，通过 Web 控制台查看。
+
+### 推送方式
 
 | 对比维度 | REST API | MQTT Discovery |
 |---------|---------|---------------|
@@ -43,89 +55,9 @@
 >
 > REST API 方式需要在 HA 的 `configuration.yaml` 中配置 template，详见 [REST API 配置指南](docs/HA_CONFIG.md)。
 
-两种方式共享相同的实体命名（`sensor.xxx_xxxx`），现有卡片无需修改即可在两种方式间切换。
+### 传感器列表
 
----
-
-## Web 控制台
-
-启用 `WEB_DASHBOARD=true` 后，访问 `http://<主机>:8080/` 查看多户用电概览、阶梯用电、日/月图表与同步记录。
-
-**集成到 Home Assistant 界面**：通过 HA 的 **Webpage 仪表盘** 功能，可将 Web 控制台直接嵌入左侧菜单。详见 [面板集成指南](docs/HA_PANEL.md) 或 [快速指南](docs/QUICK_PANEL.md)。
-
-![Web 控制台登录页](docs/attachment/login.png)
-
-![Web 控制台监控页](docs/attachment/controller.png)
-
----
-
-## 安装部署
-
-### 方式一：Home Assistant Add-on（推荐）
-
-1. 进入 `设置` → `加载项` → `加载项商店`
-2. 右上角 `...` → `仓库`，添加：`https://github.com/Poiig/ha_sgcc_electricity`
-3. 刷新页面，找到 **国家电网电费数据获取** 并安装
-4. 切换到 `配置` 标签，填写手机号、密码
-5. 配置推送方式：填写 `hass_url` + `hass_token`（REST API）或 `mqtt_host`（MQTT）
-6. 保存配置，启动 Add-on
-
-### 方式二：Docker Compose
-
-```bash
-mkdir ha_sgcc_electricity && cd ha_sgcc_electricity
-curl -O https://raw.githubusercontent.com/Poiig/ha_sgcc_electricity/master/docker-compose.yml
-curl -O https://raw.githubusercontent.com/Poiig/ha_sgcc_electricity/master/example.env
-cp example.env .env && vim .env
-docker compose up -d --force-recreate
-```
-
-**镜像地址：**
-
-| 来源 | 地址 |
-|------|------|
-| GHCR | `ghcr.io/poiig/ha_sgcc_electricity:latest` |
-| GHCR 国内加速 | `ghcr.nju.edu.cn/poiig/ha_sgcc_electricity:latest` |
-| Docker Hub | `poiigzhao/ha_sgcc_electricity:latest` |
-| Docker Hub 国内加速 | `docker.1ms.run/poiigzhao/ha_sgcc_electricity:latest` |
-
-### 方式三：本地运行
-
-详见 [本地开发指南](LOCAL_DEV_GUIDE.md)
-
----
-
-## 环境变量
-
-Docker Compose 方式通过 `.env` 文件配置，完整配置项见 `example.env`。
-
-**必填：**
-
-| 变量 | 说明 |
-|------|------|
-| `PHONE_NUMBER` | 95598 登录手机号 |
-| `PASSWORD` | 95598 登录密码 |
-| `HASS_URL` + `HASS_TOKEN` | REST API 方式（二选一） |
-| `MQTT_HOST` | MQTT 方式（二选一） |
-
-**常用可选：**
-
-| 变量 | 默认值 | 说明 |
-|------|--------|------|
-| `JOB_START_TIME` | `09:30` | 每天同步开始时间（程序会在该时间及 +12 小时各执行一次） |
-| `RUN_ON_STARTUP` | `false` | Docker 启动后立即登录抓取 |
-| `CAPTCHA_SOLVER` | `local` | 验证码识别（推荐 `llm`，详见下方说明） |
-| `DB_TYPE` | sqlite | 数据库类型（sqlite / mysql / postgresql） |
-| `LOGIN_METHOD` | password | 登录方式（password / qrcode） |
-| `LOGIN_FALLBACK` | qrcode | 登录失败备选（qrcode / none） |
-| `IGNORE_USER_ID` | 空 | 忽略的户号（逗号分隔） |
-| `WEB_DASHBOARD` | true | 启用 Web 控制台 |
-| `PUSH_TYPE` | none | 通知方式（none / pushplus / urlpush / wework） |
-| `DATA_RETENTION_DAYS` | 365 | 数据库记录保留天数，0 表示永久保留 |
-
----
-
-## 传感器列表
+开启 HA 推送后，程序会自动在 Home Assistant 中创建以下实体（`xxxx` 为户号后四位）：
 
 | 实体 | 说明 |
 |------|------|
@@ -148,7 +80,96 @@ Docker Compose 方式通过 `.env` 文件配置，完整配置项见 `example.en
 | `sensor.step_total_usage_xxxx` | 阶梯累计用电量（kWh，住宅用户） |
 | `sensor.step_stage_xxxx` | 当前阶梯阶段（1/2/3，住宅用户） |
 
-> `xxxx` 为户号后四位。
+> MQTT Discovery 方式下实体自动创建，无需手动配置。REST API 方式需在 HA 中配置 template，详见 [REST API 配置指南](docs/HA_CONFIG.md)。
+
+### HA 相关配置参数
+
+| 变量 | 默认值 | 说明 |
+|------|--------|------|
+| `ENABLE_HA_PUSH` | `true` | 是否推送到 Home Assistant，设为 `false` 则仅抓取数据不推送 |
+| `MQTT_HOST` | 空 | MQTT Broker 地址（推荐方式，填写后自动使用 MQTT Discovery） |
+| `MQTT_PORT` | `1883` | MQTT 端口 |
+| `MQTT_USERNAME` | 空 | MQTT 用户名 |
+| `MQTT_PASSWORD` | 空 | MQTT 密码 |
+| `MQTT_CLIENT_ID` | `ha_sgcc_electricity` | MQTT 客户端 ID |
+| `MQTT_TOPIC_PREFIX` | `homeassistant` | MQTT Discovery 主题前缀 |
+| `MQTT_DEVICE_ID` | `ha_sgcc_electricity` | MQTT 设备 ID |
+| `MQTT_DEVICE_NAME` | `国家电网电费数据` | MQTT 设备名称 |
+| `HASS_URL` | 空 | Home Assistant REST API 地址（MQTT 未配置时使用） |
+| `HASS_TOKEN` | 空 | Home Assistant 长期访问令牌 |
+| `HA_SKIP_UNCHANGED` | `false` | 传感器数值未变化时跳过更新（减少 API 调用） |
+
+> 只要不填 `MQTT_HOST` 和 `HASS_URL`，即使 `ENABLE_HA_PUSH=true` 也不会推送。
+
+### 将 Web 控制台嵌入 Home Assistant
+
+通过 HA 的 **Webpage 仪表盘** 功能，可将 Web 控制台直接嵌入左侧菜单。详见 [面板集成指南](docs/HA_PANEL.md) 或 [快速指南](docs/QUICK_PANEL.md)。
+
+---
+
+## 安装部署
+
+### 方式一：Home Assistant Add-on（推荐）
+
+1. 进入 `设置` → `加载项` → `加载项商店`
+2. 右上角 `...` → `仓库`，添加：`https://github.com/Poiig/ha_sgcc_electricity`
+3. 刷新页面，找到 **国家电网电费数据获取** 并安装
+4. 切换到 `配置` 标签，填写手机号、密码
+5. 配置推送方式：填写 `hass_url` + `hass_token`（REST API）或 `mqtt_host`（MQTT）
+6. 保存配置，启动 Add-on
+
+### 方式二：Docker Compose
+
+```bash
+mkdir sgcc_electricity && cd sgcc_electricity
+curl -O https://raw.githubusercontent.com/Poiig/ha_sgcc_electricity/master/docker-compose.yml
+curl -O https://raw.githubusercontent.com/Poiig/ha_sgcc_electricity/master/example.env
+cp example.env .env && vim .env
+docker compose up -d --force-recreate
+```
+
+**镜像地址：**
+
+| 来源 | 地址 |
+|------|------|
+| GHCR | `ghcr.io/poiig/sgcc_electricity:latest` |
+| GHCR 国内加速 | `ghcr.nju.edu.cn/poiig/sgcc_electricity:latest` |
+| Docker Hub | `poiigzhao/sgcc_electricity:latest` |
+| Docker Hub 国内加速 | `docker.1ms.run/poiigzhao/sgcc_electricity:latest` |
+
+### 方式三：本地运行
+
+详见 [本地开发指南](LOCAL_DEV_GUIDE.md)
+
+---
+
+## 环境变量
+
+Docker Compose 方式通过 `.env` 文件配置，完整配置项见 `example.env`。
+
+**必填：**
+
+| 变量 | 说明 |
+|------|------|
+| `PHONE_NUMBER` | 95598 登录手机号 |
+| `PASSWORD` | 95598 登录密码 |
+
+**Home Assistant 推送配置见 [Home Assistant 推送](#home-assistant-推送) 章节。**
+
+**常用可选：**
+
+| 变量 | 默认值 | 说明 |
+|------|--------|------|
+| `JOB_START_TIME` | `09:30` | 每天同步开始时间（程序会在该时间及 +12 小时各执行一次） |
+| `RUN_ON_STARTUP` | `false` | Docker 启动后立即登录抓取 |
+| `CAPTCHA_SOLVER` | `local` | 验证码识别（推荐 `llm`，详见下方说明） |
+| `DB_TYPE` | sqlite | 数据库类型（sqlite / mysql / postgresql） |
+| `LOGIN_METHOD` | password | 登录方式（password / qrcode） |
+| `LOGIN_FALLBACK` | qrcode | 登录失败备选（qrcode / none） |
+| `IGNORE_USER_ID` | 空 | 忽略的户号（逗号分隔） |
+| `WEB_DASHBOARD` | true | 启用 Web 控制台 |
+| `PUSH_TYPE` | none | 通知方式（none / pushplus / urlpush / wework） |
+| `DATA_RETENTION_DAYS` | 365 | 数据库记录保留天数，0 表示永久保留 |
 
 ---
 

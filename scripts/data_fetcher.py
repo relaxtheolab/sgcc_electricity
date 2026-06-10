@@ -656,13 +656,16 @@ class DataFetcher:
 
         time.sleep(self._step_wait)
         logging.info("WebDriver 已就绪")
-        # 根据配置选择 MQTT Discovery 或 REST API 推送方式
-        mqtt_host = os.getenv("MQTT_HOST", "").strip()
-        if mqtt_host:
-            from mqtt_sensor_updator import MQTTSensorUpdator
-            updator = MQTTSensorUpdator()
-        else:
-            updator = SensorUpdator()
+        # 根据配置选择推送方式，ENABLE_HA_PUSH=false 时跳过 HA 推送
+        enable_ha_push = os.getenv("ENABLE_HA_PUSH", "true").strip().strip('"').strip("'").lower() not in ("false", "0", "no")
+        updator = None
+        if enable_ha_push:
+            mqtt_host = os.getenv("MQTT_HOST", "").strip()
+            if mqtt_host:
+                from mqtt_sensor_updator import MQTTSensorUpdator
+                updator = MQTTSensorUpdator()
+            else:
+                updator = SensorUpdator()
         
         try:
             login_method = os.getenv("LOGIN_METHOD", "password").lower()
@@ -735,13 +738,14 @@ class DataFetcher:
                 balance, last_daily_date, last_daily_usage, yearly_charge, yearly_usage, month_charge, month_usage, tou_data, enhanced_balance, step_data, last_month_period = self._get_all_data(driver, user_id, userid_index)
                 logging.info(f"用户 [{user_id}] 数据获取完成: 余额={balance}CNY, 最近日用电={last_daily_usage}kWh({last_daily_date}), "
                              f"年度用电={yearly_usage}kWh, 年度电费={yearly_charge}CNY, 月用电={month_usage}kWh, 月电费={month_charge}CNY")
-                updator.update_one_userid(
-                    user_id, balance, last_daily_date, last_daily_usage,
-                    yearly_charge, yearly_usage, month_charge, month_usage,
-                    tou_data=tou_data, enhanced_balance=enhanced_balance,
-                    step_data=step_data,
-                    user_name=self._user_name_map.get(user_id, ""),
-                )
+                if updator:
+                    updator.update_one_userid(
+                        user_id, balance, last_daily_date, last_daily_usage,
+                        yearly_charge, yearly_usage, month_charge, month_usage,
+                        tou_data=tou_data, enhanced_balance=enhanced_balance,
+                        step_data=step_data,
+                        user_name=self._user_name_map.get(user_id, ""),
+                    )
                 fetch_results.append({
                     "user_id": user_id,
                     "user_name": self._user_name_map.get(user_id, user_id),
