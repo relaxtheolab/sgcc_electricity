@@ -127,7 +127,49 @@ jobs:
           package-name: ${{ github.event.repository.name }}
           package-type: container
           min-versions-to-keep: 10
-          delete-only-pre-release-versions: true
+
+      - name: Clean up old Docker Hub images (keep latest 10)
+        run: |
+          DH_USER="${{ secrets.DOCKERHUB_USERNAME }}"
+          DH_TOKEN="${{ secrets.DOCKERHUB_TOKEN }}"
+          REPO="sgcc_electricity"
+
+          # 获取 Docker Hub token
+          TOKEN=$(curl -s -H "Content-Type: application/json" \
+            -X POST "https://hub.docker.com/v2/users/login/" \
+            -d "{\"username\": \"${DH_USER}\", \"password\": \"${DH_TOKEN}\"}" | jq -r .token)
+
+          if [ -z "$TOKEN" ] || [ "$TOKEN" = "null" ]; then
+            echo "Docker Hub 登录失败，跳过清理"
+            exit 0
+          fi
+
+          # 获取所有标签（按更新时间降序），排除 latest 和 base
+          TAGS=$(curl -s -H "Authorization: JWT ${TOKEN}" \
+            "https://hub.docker.com/v2/repositories/${DH_USER}/${REPO}/tags/?page_size=100&ordering=-last_updated" \
+            | jq -r '.results[] | select(.name != "latest" and .name != "base") | .name')
+
+          TOTAL=$(echo "$TAGS" | wc -l)
+          echo "Docker Hub 共 ${TOTAL} 个版本标签（不含 latest/base）"
+
+          if [ "$TOTAL" -le 10 ]; then
+            echo "未超过 10 个，无需清理"
+            exit 0
+          fi
+
+          # 保留前 10 个（最新的），删除其余
+          TO_DELETE=$(echo "$TAGS" | tail -n +11)
+          COUNT=$(echo "$TO_DELETE" | wc -l)
+          echo "将删除 ${COUNT} 个旧版本："
+          echo "$TO_DELETE"
+
+          for TAG in $TO_DELETE; do
+            curl -s -o /dev/null -w "删除 ${TAG}: HTTP %{http_code}\n" \
+              -X DELETE -H "Authorization: JWT ${TOKEN}" \
+              "https://hub.docker.com/v2/repositories/${DH_USER}/${REPO}/tags/${TAG}/"
+          done
+
+          echo "Docker Hub 旧版本清理完成"
 
       - name: Summary
         run: |
@@ -140,4 +182,4 @@ jobs:
           echo "| Docker Hub | \`docker.io/${DH_USER}/sgcc_electricity:latest\` | \`docker.io/${DH_USER}/sgcc_electricity:${{ steps.vars.outputs.tag }}\` |" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "基础镜像: \`docker.io/${DH_USER}/sgcc_electricity:base\`" >> "$GITHUB_STEP_SUMMARY"
-          echo "GHCR 已配置保留最近 10 个版本，旧版本自动清理" >> "$GITHUB_STEP_SUMMARY"
+          echo "GHCR / Docker Hub 均保留最近 10 个版本，旧版本自动清理" >> "$GITHUB_STEP_SUMMARY"
