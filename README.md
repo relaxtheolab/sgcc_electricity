@@ -1,3 +1,5 @@
+Fork from https://github.com/Poiig/sgcc_electricity for debugging since some data seems being parsed incorrectly.
+
 # 国家电网数据获取工具
 
 [![Docker Build](https://github.com/Poiig/sgcc_electricity/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/Poiig/sgcc_electricity/actions/workflows/docker-publish.yml)
